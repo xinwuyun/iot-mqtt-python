@@ -15,6 +15,10 @@ from IoT_device.request.services_properties import ServicesProperties
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def set_device_led(value):
+    # led灯亮逻辑
+    pass
+
 def run():
     # 客户端配置
     client_cfg = IoTClientConfig(server_ip='d7336faa90.st1.iotda-device.cn-north-4.myhuaweicloud.com',
@@ -50,7 +54,24 @@ def run():
         service_property.add_service_property(service_id="analog", property='PHV-phsA', value=1)
         iot_client.respond_property_get(request_id, service_property.service_property)
         print('------------------this is myself callback')
-
+    
+    def command_callback(request_id, command):
+        """
+            用 command.paras['value'] 指示led灯的亮开
+            目前设置了**每次**上报 led_control_param 都会进行判断，如果大于90则返回value为1，反之为0
+        """
+        logger.info(('Command, device id:  ', command.device_id))
+        logger.info(('Command, service id = ', command.service_id))
+        logger.info(('Command, command name: ', command.command_name))
+        logger.info(('Command. paras: ', command.paras))
+        print(command.paras['value'])
+        set_device_led(command.paras['value'])
+        
+        iot_client.respond_command(request_id, result_code=0)
+        print('------------------this is myself callback')
+    
+    # 设置响应命令的回调
+    iot_client.set_command_callback(command_callback)
     # 设置平台设置设备属性的回调
     iot_client.set_property_set_callback(property_set_callback)
     # 设置平台查询设备属性的回调
@@ -61,10 +82,13 @@ def run():
     while True:
         # 按照产品模型设置属性
         service_property = ServicesProperties()
-        service_property.add_service_property(service_id="Battery", property='test_data1', value=random.randint(0, 100))
-        service_property.add_service_property(service_id="Battery", property='test_data2', value=random.randint(0, 100))
+        service_property.add_service_property(service_id="test_service", property='test_data1', value=random.randint(0, 100))
+        service_property.add_service_property(service_id="test_service", property='test_data2', value=random.randint(0, 100))
+        led_control_param = random.randint(80, 100)
+        service_property.add_service_property(service_id="test_service", property='led_control_param', value=led_control_param)
+        logger.info(f"led_control_param: {led_control_param}")
         iot_client.report_properties(service_properties=service_property.service_property, qos=1)
-        time.sleep(2)
+        time.sleep(5)
 
 if __name__ == '__main__':
     run()
